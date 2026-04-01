@@ -6,11 +6,30 @@ services:
     environment:
       ADDR: ":8080"
       DATABASE_URL: "postgres://tasks_user:tasks_pass@postgres:5432/tasks_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
       READ_TIMEOUT: "5s"
       WRITE_TIMEOUT: "10s"
       IDLE_TIMEOUT: "120s"
     depends_on:
       postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  auth:
+    build: .
+    command: ["./auth"]
+    ports:
+      - "8081:8081"
+    environment:
+      AUTH_ADDR: ":8081"
+      DATABASE_URL: "postgres://tasks_user:tasks_pass@postgres:5432/tasks_db?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -35,6 +54,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tasks_user -d tasks_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

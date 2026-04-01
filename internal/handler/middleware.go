@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/redajn/task-mgr/internal/token"
 )
 
 type ResponseWriter struct {
@@ -59,4 +61,31 @@ func Recoverer(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func Auth(tokens *token.Store) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token := extractToken(r)
+			if token == "" {
+				writeJSON(w, http.StatusUnauthorized, errorResponse{
+					Error: "MISSING token",
+					Code:  "ANAUTHORIZED",
+				})
+				return
+			}
+
+			info, err := tokens.Get(r.Context(), token)
+			if err != nil {
+				writeJSON(w, http.StatusUnauthorized, errorResponse{
+					Error: "invalid ot expired token",
+					Code:  "UNAUTHORIZED",
+				})
+				return
+
+			}
+			ctx := contextWithTokenInfo(r.Context(), info)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
 }

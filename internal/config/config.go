@@ -10,7 +10,9 @@ import (
 
 type Config struct {
 	Addr         string
+	AuthAddr     string
 	DatabaseURL  string
+	RedisAddr    string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
@@ -19,7 +21,9 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		Addr:         getEnv("ADDR", ":8080"),
+		AuthAddr:     getEnv("AUTH_ADDR", ":8081"),
 		DatabaseURL:  getEnv("DATABASE_URL", ""),
+		RedisAddr:    getEnv("REDIS_ADDR", "localhost:6379"),
 		ReadTimeout:  getDuration("READ_TIMEOUT", 5*time.Second),
 		WriteTimeout: getDuration("WRITE_TIMEOUT", 10*time.Second),
 		IdleTimeout:  getDuration("IDLE_TIMEOUT", 120*time.Second),
@@ -37,6 +41,9 @@ func (c Config) validate() error {
 
 	if c.DatabaseURL == "" {
 		errs = append(errs, errors.New("DATABASE_URL is required"))
+	}
+	if c.RedisAddr == "" {
+		errs = append(errs, errors.New("REDIS_ADDR is required"))
 	}
 	if c.ReadTimeout <= 0 {
 		errs = append(errs, errors.New("READ_TIMEOUT must be positive"))
