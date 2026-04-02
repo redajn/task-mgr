@@ -16,8 +16,16 @@ func NewTaskService(repo domain.TaskRepository) *TaskService {
 	return &TaskService{repo: repo}
 }
 
-func (s *TaskService) GetTask(ctx context.Context, id int64) (domain.Task, error) {
-	return s.repo.GetByID(ctx, id)
+func (s *TaskService) GetTask(ctx context.Context, userID, taskID int64) (domain.Task, error) {
+	task, err := s.repo.GetByID(ctx, taskID)
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	if task.UserID != userID {
+		return domain.Task{}, domain.ErrTaskForbidden
+	}
+	return task, nil
 }
 
 func (s *TaskService) ListTask(ctx context.Context, filter domain.TaskFilter) ([]domain.Task, error) {
@@ -36,15 +44,29 @@ func (s *TaskService) CreateTask(ctx context.Context, input domain.CreateTaskInp
 	return s.repo.Create(ctx, input)
 }
 
-func (s *TaskService) UpdateTask(ctx context.Context, id int64, input domain.UpdateTaskInput) (domain.Task, error) {
+func (s *TaskService) UpdateTask(ctx context.Context, userID, taskID int64, input domain.UpdateTaskInput) (domain.Task, error) {
+	task, err := s.repo.GetByID(ctx, taskID)
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if task.UserID != userID {
+		return domain.Task{}, domain.ErrTaskForbidden
+	}
 	if input.Title != nil && strings.TrimSpace(*input.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
-	return s.repo.Update(ctx, id, input)
+	return s.repo.Update(ctx, taskID, input)
 }
 
-func (s *TaskService) DeleteTask(ctx context.Context, id int64) error {
-	return s.repo.Delete(ctx, id)
+func (s *TaskService) DeleteTask(ctx context.Context, userID, taskID int64) error {
+	task, err := s.repo.GetByID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.UserID != userID {
+		return domain.ErrTaskForbidden
+	}
+	return s.repo.Delete(ctx, taskID)
 }
 
 var _ domain.TaskService = (*TaskService)(nil)

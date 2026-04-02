@@ -29,6 +29,11 @@ func handleError(w http.ResponseWriter, err error) {
 			Error: "task not found",
 			Code:  "TASK_NOT_FOUND",
 		})
+	case errors.Is(err, domain.ErrTaskForbidden):
+		writeJSON(w, http.StatusForbidden, errorResponse{
+			Error: "title cannot be empty",
+			Code:  "FORBIDDEN",
+		})
 	case errors.Is(err, domain.ErrTaskTitleEmpty):
 		writeJSON(w, http.StatusBadRequest, errorResponse{
 			Error: "title cannot be empty",

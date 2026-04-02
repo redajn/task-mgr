@@ -22,14 +22,14 @@ func NewTaskRepo(db *pgxpool.Pool) *TaskRepo {
 
 func (r *TaskRepo) GetByID(ctx context.Context, id int64) (domain.Task, error) {
 	const query = `
-		SELECT id, title, done, created_at, updated_at
-		FROM task
+		SELECT id, title, done, user_id, created_at, updated_at
+		FROM tasks
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var t domain.Task
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&t.ID, &t.Title, &t.Done, &t.CreatedAt, &t.UpdatedAt,
+		&t.ID, &t.Title, &t.Done, &t.UserID, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -42,12 +42,13 @@ func (r *TaskRepo) GetByID(ctx context.Context, id int64) (domain.Task, error) {
 
 func (r *TaskRepo) List(ctx context.Context, filter domain.TaskFilter) ([]domain.Task, error) {
 	query := `
-		SELECT id, title, done, created_at, updated_at
+		SELECT id, title, done, user_id, created_at, updated_at
 		FROM tasks
 		WHERE deleted_at IS NULL
+		AND user_id = $1
 	`
 
-	args := []any{}
+	args := []any{filter.UserID}
 	if filter.Done != nil {
 		args = append(args, *filter.Done)
 		query += fmt.Sprintf(" AND done = $%d", len(args))
@@ -63,7 +64,7 @@ func (r *TaskRepo) List(ctx context.Context, filter domain.TaskFilter) ([]domain
 	tasks := make([]domain.Task, 0)
 	for rows.Next() {
 		var t domain.Task
-		if err := rows.Scan(&t.ID, &t.Title, &t.Done, &t.CreatedAt, &t.UpdatedAt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Done, &t.UserID, &t.CreatedAt, &t.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan task: %w", err)
 		}
 		tasks = append(tasks, t)
@@ -73,14 +74,14 @@ func (r *TaskRepo) List(ctx context.Context, filter domain.TaskFilter) ([]domain
 
 func (r *TaskRepo) Create(ctx context.Context, input domain.CreateTaskInput) (domain.Task, error) {
 	const query = `
-		INSERT INTO tasks (title)
-		VALUES ($1)
-		RETURNING id, title, done, created_at, updated_at
+		INSERT INTO tasks (title, user_id)
+		VALUES ($1, $2)
+		RETURNING id, title, done, user_id, created_at, updated_at
 	`
 
 	var t domain.Task
-	err := r.db.QueryRow(ctx, query, input.Title).Scan(
-		&t.ID, &t.Title, &t.Done, &t.CreatedAt, &t.UpdatedAt,
+	err := r.db.QueryRow(ctx, query, input.Title, input.UserID).Scan(
+		&t.ID, &t.Title, &t.Done, &t.UserID, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("create task: %w", err)

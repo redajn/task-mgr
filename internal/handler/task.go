@@ -18,7 +18,9 @@ func NewTaskHandler(svc domain.TaskService) *TaskHandler {
 }
 
 func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
-	filter := domain.TaskFilter{}
+	info, _ := TokenInfoFromContext(r.Context())
+
+	filter := domain.TaskFilter{UserID: info.UserID}
 
 	if doneStr := r.URL.Query().Get("done"); doneStr != "" {
 		done, err := strconv.ParseBool(doneStr)
@@ -39,11 +41,14 @@ func (h *TaskHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
+	info, _ := TokenInfoFromContext(r.Context())
+
 	var input domain.CreateTaskInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid request body"})
 		return
 	}
+	input.UserID = info.UserID
 
 	task, err := h.svc.CreateTask(r.Context(), input)
 	if err != nil {
@@ -54,13 +59,15 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
+	info, _ := TokenInfoFromContext(r.Context())
+
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid task id"})
 		return
 	}
 
-	task, err := h.svc.GetTask(r.Context(), id)
+	task, err := h.svc.GetTask(r.Context(), info.UserID, id)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -69,6 +76,8 @@ func (h *TaskHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
+	info, _ := TokenInfoFromContext(r.Context())
+
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid task id"})
@@ -81,7 +90,7 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := h.svc.UpdateTask(r.Context(), id, input)
+	task, err := h.svc.UpdateTask(r.Context(), info.UserID, id, input)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -90,13 +99,15 @@ func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	info, _ := TokenInfoFromContext(r.Context())
+
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "invalid task id"})
 		return
 	}
 
-	if err := h.svc.DeleteTask(r.Context(), id); err != nil {
+	if err := h.svc.DeleteTask(r.Context(), info.UserID, id); err != nil {
 		handleError(w, err)
 		return
 	}
