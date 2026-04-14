@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/redajn/task-mgr/internal/token"
+	"github.com/redajn/task-mgr/internal/repository/redis"
 )
 
 type ResponseWriter struct {
@@ -63,7 +63,7 @@ func Recoverer(next http.Handler) http.Handler {
 	})
 }
 
-func Auth(tokens *token.Store) func(http.Handler) http.Handler {
+func Auth(tokens *redis.TokenRepo) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := extractToken(r)

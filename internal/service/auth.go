@@ -5,16 +5,16 @@ import (
 	"fmt"
 
 	"github.com/redajn/task-mgr/internal/domain"
-	"github.com/redajn/task-mgr/internal/token"
+	"github.com/redajn/task-mgr/internal/repository/redis"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
 	users  domain.UserRepository
-	tokens *token.Store
+	tokens *redis.TokenRepo
 }
 
-func NewAuthService(users domain.UserRepository, tokens *token.Store) *AuthService {
+func NewAuthService(users domain.UserRepository, tokens *redis.TokenRepo) *AuthService {
 	return &AuthService{users: users, tokens: tokens}
 }
 
@@ -49,7 +49,7 @@ func (s *AuthService) Login(ctx context.Context, input domain.LoginInput) (strin
 		return "", domain.ErrInvalidCredentials
 	}
 
-	token, err := token.Generate()
+	token, err := redis.Generate()
 	if err != nil {
 		return "", fmt.Errorf("generate token: %w", err)
 	}

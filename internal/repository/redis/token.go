@@ -1,4 +1,4 @@
-package token
+package redis
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
+	redisClient "github.com/redis/go-redis/v9"
 
 	"github.com/redajn/task-mgr/internal/domain"
 )
@@ -18,12 +18,12 @@ const (
 	tokenPrefix = "session:"
 )
 
-type Store struct {
-	client *redis.Client
+type TokenRepo struct {
+	client *redisClient.Client
 }
 
-func NewStore(client *redis.Client) *Store {
-	return &Store{client: client}
+func NewTokenRepo(client *redisClient.Client) *TokenRepo {
+	return &TokenRepo{client: client}
 }
 
 func Generate() (string, error) {
@@ -34,7 +34,7 @@ func Generate() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (s *Store) Save(ctx context.Context, token string, info domain.TokenInfo) error {
+func (s *TokenRepo) Save(ctx context.Context, token string, info domain.TokenInfo) error {
 	data, err := json.Marshal(info)
 	if err != nil {
 		return fmt.Errorf("marshal token info: %w", err)
@@ -47,11 +47,11 @@ func (s *Store) Save(ctx context.Context, token string, info domain.TokenInfo) e
 	return nil
 }
 
-func (s *Store) Get(ctx context.Context, token string) (domain.TokenInfo, error) {
+func (s *TokenRepo) Get(ctx context.Context, token string) (domain.TokenInfo, error) {
 	key := tokenPrefix + token
 	data, err := s.client.Get(ctx, key).Bytes()
 	if err != nil {
-		if err == redis.Nil {
+		if err == redisClient.Nil {
 			return domain.TokenInfo{}, domain.ErrInvalidToken
 		}
 		return domain.TokenInfo{}, fmt.Errorf("get token:%w", err)
@@ -64,7 +64,7 @@ func (s *Store) Get(ctx context.Context, token string) (domain.TokenInfo, error)
 	return info, nil
 }
 
-func (s *Store) Delete(ctx context.Context, token string) error {
+func (s *TokenRepo) Delete(ctx context.Context, token string) error {
 	key := tokenPrefix + token
 	if err := s.client.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("delete token: %w", err)

@@ -11,13 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
+	redisClient "github.com/redis/go-redis/v9"
 
 	"github.com/redajn/task-mgr/internal/config"
 	"github.com/redajn/task-mgr/internal/handler"
 	"github.com/redajn/task-mgr/internal/repository/postgres"
+	"github.com/redajn/task-mgr/internal/repository/redis"
 	"github.com/redajn/task-mgr/internal/service"
-	"github.com/redajn/task-mgr/internal/token"
 )
 
 func main() {
@@ -36,16 +36,16 @@ func main() {
 	}
 	defer pool.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
+	rdb := redisClient.NewClient(&redisClient.Options{Addr: cfg.RedisAddr})
 	if err := rdb.Ping(context.Background()).Err(); err != nil {
 		slog.Error("failed to connect ro redis", "error", err)
 		os.Exit(1)
 	}
 	defer rdb.Close()
 
-	tokenStore := token.NewStore(rdb)
+	tokenRepo := redis.NewTokenRepo(rdb)
 	userRepo := postgres.NewUserRepo(pool)
-	authService := service.NewAuthService(userRepo, tokenStore)
+	authService := service.NewAuthService(userRepo, tokenRepo)
 	authHandler := handler.NewAuthHandler(authService)
 
 	r := chi.NewRouter()

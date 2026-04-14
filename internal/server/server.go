@@ -9,10 +9,10 @@ import (
 
 	"github.com/redajn/task-mgr/internal/config"
 	"github.com/redajn/task-mgr/internal/handler"
-	"github.com/redajn/task-mgr/internal/token"
+	"github.com/redajn/task-mgr/internal/repository/redis"
 )
 
-func New(taskHandler *handler.TaskHandler, authHandler *handler.AuthHandler, tokenStore *token.Store, cfg config.Config) *http.Server {
+func New(taskHandler *handler.TaskHandler, authHandler *handler.AuthHandler, tokenRepo *redis.TokenRepo, cfg config.Config) *http.Server {
 	r := chi.NewRouter()
 
 	r.Use(handler.Recoverer)
